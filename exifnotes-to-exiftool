@@ -129,6 +129,7 @@ def select_image_files(found_files, frame_count):
         else: # num_found == frame_count
             print(f"\nFound {num_found} images, matching the {frame_count} commands.")
             selected_files = found_files
+            break
 
     return selected_files
 
