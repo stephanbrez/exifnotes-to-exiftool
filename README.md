@@ -18,7 +18,7 @@ This script helps photographers who use the [ExifNotes](https://play.google.com/
 
 ## Installation
 
-1. Clone or download this repository
+1. Clone this repository or download [this file](https://raw.githubusercontent.com/stephanbrez/exifnotes-to-exiftool/refs/heads/main/exifnotes-to-exiftool)
 2. Make the script executable:
    ```bash
    chmod +x exifnotes-to-exiftool
@@ -38,7 +38,7 @@ This script helps photographers who use the [ExifNotes](https://play.google.com/
      ```
    - Using Python interpreter:
      ```bash
-     python3 exifnotes-to-exiftool Fuji_400H_ExifToolCmds.txt
+     python3 <path to file>/exifnotes-to-exiftool Fuji_400H_ExifToolCmds.txt
      ```
 3. Follow the interactive prompts to:
    - Specify the image directory (or use current directory)
