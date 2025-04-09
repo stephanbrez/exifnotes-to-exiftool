@@ -1,0 +1,24 @@
+exiftool -Make="Hasselblad " -Model="SWC/M" -DateTime="2024:10:12 16:19" -DateTimeOriginal="2024:10:12 16:19" -ShutterSpeedValue="1/15" -ExposureTime="1/15" -ApertureValue="11" -FNumber="11" -GPSLatitude="41 53 4,48512" -GPSLatitudeRef="N" -GPSLongitude="87 37 49,56708" -GPSLongitudeRef="W" -ISO="400" -LightSource="Unknown" -Artist="Stephan Brezinsky" *_1.jpg
+
+exiftool -Make="Hasselblad " -Model="SWC/M" -DateTime="2024:10:12 16:26" -DateTimeOriginal="2024:10:12 16:26" -ShutterSpeedValue="1/15" -ExposureTime="1/15" -ApertureValue="11" -FNumber="11" -GPSLatitude="41 53 0,4308" -GPSLatitudeRef="N" -GPSLongitude="87 37 48,72324" -GPSLongitudeRef="W" -FocalLength="38" -ISO="400" -LightSource="Unknown" -Artist="Stephan Brezinsky" *_2.jpg
+
+exiftool -Make="Hasselblad " -Model="SWC/M" -DateTime="2024:10:12 16:36" -DateTimeOriginal="2024:10:12 16:36" -ShutterSpeedValue="1/25" -ExposureTime="1/25" -ApertureValue="11" -FNumber="11" -GPSLatitude="41 53 7,12824" -GPSLatitudeRef="N" -GPSLongitude="87 37 40,99476" -GPSLongitudeRef="W" -FocalLength="38" -ISO="400" -LightSource="Unknown" -Artist="Stephan Brezinsky" *_3.jpg
+
+exiftool -Make="Hasselblad " -Model="SWC/M" -DateTime="2024:10:12 16:39" -DateTimeOriginal="2024:10:12 16:39" -ShutterSpeedValue="1/8" -ExposureTime="1/8" -ApertureValue="8" -FNumber="8" -GPSLatitude="41 53 9,73284" -GPSLatitudeRef="N" -GPSLongitude="87 37 41,39076" -GPSLongitudeRef="W" -FocalLength="38" -ISO="400" -LightSource="Unknown" -Artist="Stephan Brezinsky" *_4.jpg
+
+exiftool -Make="Hasselblad " -Model="SWC/M" -DateTime="2024:10:12 16:43" -DateTimeOriginal="2024:10:12 16:43" -ShutterSpeedValue="1/60" -ExposureTime="1/60" -ApertureValue="11" -FNumber="11" -UserComment="Cap on" -ImageDescription="Cap on" -GPSLatitude="41 53 10,87512" -GPSLatitudeRef="N" -GPSLongitude="87 37 41,5056" -GPSLongitudeRef="W" -FocalLength="38" -ISO="400" -LightSource="Unknown" -Artist="Stephan Brezinsky" *_5.jpg
+
+exiftool -Make="Hasselblad " -Model="SWC/M" -DateTime="2024:10:12 16:43" -DateTimeOriginal="2024:10:12 16:43" -ShutterSpeedValue="1/60" -ExposureTime="1/60" -ApertureValue="11" -FNumber="11" -GPSLatitude="41 53 13,01388" -GPSLatitudeRef="N" -GPSLongitude="87 37 40,52136" -GPSLongitudeRef="W" -FocalLength="38" -ISO="400" -LightSource="Unknown" -Artist="Stephan Brezinsky" *_6.jpg
+
+exiftool -Make="Hasselblad " -Model="SWC/M" -DateTime="2024:10:12 16:58" -DateTimeOriginal="2024:10:12 16:58" -ShutterSpeedValue="1/15" -ExposureTime="1/15" -ApertureValue="11" -FNumber="11" -GPSLatitude="41 53 22,983" -GPSLatitudeRef="N" -GPSLongitude="87 37 27,88968" -GPSLongitudeRef="W" -FocalLength="38" -ISO="400" -LightSource="Unknown" -Artist="Stephan Brezinsky" *_7.jpg
+
+exiftool -Make="Hasselblad " -Model="SWC/M" -DateTime="2024:10:12 17:00" -DateTimeOriginal="2024:10:12 17:00" -ShutterSpeedValue="1/8" -ExposureTime="1/8" -ApertureValue="11" -FNumber="11" -GPSLatitude="41 53 22,76952" -GPSLatitudeRef="N" -GPSLongitude="87 37 29,9694" -GPSLongitudeRef="W" -FocalLength="38" -ISO="400" -LightSource="Unknown" -Artist="Stephan Brezinsky" *_8.jpg
+
+exiftool -Make="Hasselblad " -Model="SWC/M" -DateTime="2024:10:12 17:38" -DateTimeOriginal="2024:10:12 17:38" -ShutterSpeedValue="1/2" -ExposureTime="1/2" -ApertureValue="8" -FNumber="8" -GPSLatitude="41 53 15,59508" -GPSLatitudeRef="N" -GPSLongitude="87 37 18,77484" -GPSLongitudeRef="W" -FocalLength="38" -ISO="400" -LightSource="Unknown" -Artist="Stephan Brezinsky" *_9.jpg
+
+exiftool -Make="Hasselblad " -Model="SWC/M" -DateTime="2024:10:12 17:43" -DateTimeOriginal="2024:10:12 17:43" -ShutterSpeedValue="1/8" -ExposureTime="1/8" -ApertureValue="8" -FNumber="8" -GPSLatitude="41 53 13,12044" -GPSLatitudeRef="N" -GPSLongitude="87 37 14,86524" -GPSLongitudeRef="W" -FocalLength="38" -ISO="400" -LightSource="Unknown" -Artist="Stephan Brezinsky" *_10.jpg
+
+exiftool -Make="Hasselblad " -Model="SWC/M" -DateTime="2024:10:12 17:59" -DateTimeOriginal="2024:10:12 17:59" -ShutterSpeedValue="1/4" -ExposureTime="1/4" -ApertureValue="8" -FNumber="8" -GPSLatitude="41 52 59,7558" -GPSLatitudeRef="N" -GPSLongitude="87 37 31,02816" -GPSLongitudeRef="W" -FocalLength="38" -ISO="400" -LightSource="Unknown" -Artist="Stephan Brezinsky" *_11.jpg
+
+exiftool -Make="Hasselblad " -Model="SWC/M" -DateTime="2024:10:20 17:26" -DateTimeOriginal="2024:10:20 17:26" -ShutterSpeedValue="1/2" -ExposureTime="1/2" -ApertureValue="11" -FNumber="11" -GPSLatitude="40 44 44,41992" -GPSLatitudeRef="N" -GPSLongitude="73 57 28,58904" -GPSLongitudeRef="W" -FocalLength="38" -ISO="400" -LightSource="Unknown" -Artist="Stephan Brezinsky" *_12.jpg
+

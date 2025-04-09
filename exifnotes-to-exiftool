@@ -1,0 +1,277 @@
+#!/usr/bin/env python3
+
+import argparse
+import os
+import re
+import sys
+from pathlib import Path
+
+def read_commands(file_path):
+    """Read ExifTool commands from a file, stripping whitespace and filtering empty lines."""
+    try:
+        with open(file_path, 'r') as f:
+            # Read lines, strip leading/trailing whitespace, filter out empty lines
+            commands = [line.strip() for line in f if line.strip()]
+        if not commands:
+            print(f"Error: Input file '{file_path}' contains no valid command lines.")
+            sys.exit(1)
+        return commands
+    except FileNotFoundError:
+        print(f"Error: Input file '{file_path}' does not exist.")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error reading file '{file_path}': {e}")
+        sys.exit(1)
+
+def extract_frame_count(last_command):
+    """Extract the frame count from the filename pattern in the last command."""
+    # The command is already stripped, so regex is simpler
+    match = re.search(r'\*_(\d+)\.\w+$', last_command) # Removed \s* before $
+    if match:
+        return int(match.group(1))
+    else:
+        print("Error: Could not determine frame count from the last command line:")
+        print(f"  Expected pattern like '*_12.jpg' at the end.")
+        print(f"  Last command line processed: {last_command}") # Show the problematic line
+        sys.exit(1)
+
+# New function for natural sorting key
+def natural_sort_key(s):
+    """Return a list of strings and integers for natural sorting."""
+    return [int(text) if text.isdigit() else text.lower()
+            for text in re.split('([0-9]+)', s)]
+
+def find_image_files(image_path, file_extension):
+    """Find and sort image files in the specified path naturally."""
+    try:
+        p = Path(image_path)
+        if not p.is_dir():
+            print(f"Error: Image path '{image_path}' is not a valid directory.")
+            sys.exit(1)
+
+        # Use glob to find files matching the extension
+        files = [f.name for f in p.glob(f'*{file_extension}') if f.is_file()]
+
+        # Use custom natural sort key
+        sorted_files = sorted(files, key=natural_sort_key)
+        return sorted_files
+    except Exception as e:
+        print(f"Error accessing image path '{image_path}': {e}")
+        sys.exit(1)
+
+def select_image_files(found_files, frame_count):
+    """Handle user interaction to select image files based on counts."""
+    num_found = len(found_files)
+    selected_files = []
+
+    while True: # Loop until valid selection and confirmation
+        if num_found > frame_count:
+            print(f"\nFound {num_found} images, but expected {frame_count} files.")
+            print("Please choose the starting image file for the commands:")
+            max_options = min(3, num_found)
+            for i in range(max_options):
+                print(f"  {i+1}. {found_files[i]}")
+            print(f"  {max_options + 1}. Enter specific filename")
+
+            choice = input("Enter your choice (1-{}): ".format(max_options + 1)).strip()
+            start_index = -1
+
+            try:
+                choice_num = int(choice)
+                if 1 <= choice_num <= max_options:
+                    start_index = choice_num - 1
+                elif choice_num == max_options + 1:
+                    filename = input("Enter the starting filename: ").strip()
+                    if filename in found_files:
+                        start_index = found_files.index(filename)
+                    else:
+                        print(f"Error: Filename '{filename}' not found in the directory.")
+                        continue # Re-prompt
+                else:
+                    print("Invalid choice number.")
+                    continue # Re-prompt
+            except ValueError:
+                print("Invalid input. Please enter a number.")
+                continue # Re-prompt
+
+            # Validate selection range
+            end_index = start_index + frame_count
+            if end_index > num_found:
+                print(f"Error: Selecting {frame_count} files starting from {found_files[start_index]} goes beyond the available {num_found} files.")
+                print("Please choose a different starting file.")
+                continue # Re-prompt
+
+            selected_files = found_files[start_index:end_index]
+            print(f"\nSelected files: {selected_files[0]} ... {selected_files[-1]} ({len(selected_files)} files)")
+
+            if end_index < num_found:
+                print(f"Warning: There are {num_found - end_index} remaining image files in the directory after this selection.")
+                proceed = input("Do you want to proceed with this selection? (y/n): ").strip().lower()
+                if proceed != 'y':
+                    print("Selection cancelled. Please choose again.")
+                    continue # Re-prompt
+                else:
+                    break # Valid selection confirmed
+            else:
+                 # Selection fits perfectly or ends exactly at the last file
+                 break # Valid selection
+
+        elif num_found < frame_count:
+            print(f"\nWarning: Found only {num_found} images, but expected {frame_count} files.")
+            print(f"The script will only use the first {num_found} files for the available files.")
+            selected_files = found_files
+            proceed = input("Do you want to proceed? (y/n): ").strip().lower()
+            if proceed != 'y':
+                print("Script execution cancelled.")
+                sys.exit(0)
+            else:
+                 break # Confirmed to proceed
+        else: # num_found == frame_count
+            print(f"\nFound {num_found} images, matching the {frame_count} commands.")
+            selected_files = found_files
+            proceed = input("Do you want to proceed? (y/n): ").strip().lower()
+            if proceed != 'y':
+                print("Script execution cancelled.")
+                sys.exit(0)
+            else:
+                 break # Confirmed to proceed
+
+    return selected_files
+
+def generate_final_commands(commands, selected_files, image_path):
+    """Generate the final list of commands targeting specific files."""
+    final_commands = []
+    num_to_process = min(len(commands), len(selected_files))
+
+    for i in range(num_to_process):
+        cmd_template = commands[i] # Already stripped in read_commands
+        target_file = selected_files[i]
+        # Use Path object for robust path joining
+        full_target_path = Path(image_path) / target_file
+
+        # Escape potential special characters in path for shell
+        # Simple approach: wrap in double quotes. May need refinement for complex paths.
+        # Use str(full_target_path) to get the string representation
+        quoted_target_path = f'"{str(full_target_path)}"'
+
+        # Replace the old pattern (e.g., *_1.jpg) with the specific quoted path
+        # Regex searches for the last argument starting with *, _, number, dot, extension
+        # Simpler regex now as command is stripped
+        modified_cmd = re.sub(r'\s+\S*\*_\d+\.\w+$', f' {quoted_target_path}', cmd_template)
+
+        # Sanity check: if substitution failed, maybe the pattern wasn't at the end
+        if modified_cmd == cmd_template:
+             print(f"Warning: Could not replace filename pattern in command: {cmd_template}")
+             print("         Attempting to append filename.")
+             # Try appending if substitution failed (less ideal)
+             # Ensure correct splitting and joining
+             cmd_parts = cmd_template.split()
+             if len(cmd_parts) > 1: # Check if there's more than just the command itself
+                 modified_cmd = cmd_parts[0] + ' ' + ' '.join(cmd_parts[1:-1]) + f' {quoted_target_path}'
+             else: # Only the command itself was present? Append path.
+                 modified_cmd = cmd_template + f' {quoted_target_path}'
+
+
+        final_commands.append(modified_cmd + '\n') # Add newline for script
+
+    return final_commands
+
+def generate_shell_script(commands, output_path, input_filename, target_dir):
+    """Generate a shell script with the modified commands."""
+    try:
+        with open(output_path, 'w') as f:
+            f.write('#!/bin/bash\n\n')
+            f.write(f'# Generated ExifTool commands from: {input_filename}\n')
+            f.write(f'# Target directory: {os.path.abspath(target_dir)}\n\n') # Informative comment
+            for cmd in commands:
+                f.write(cmd)
+
+        # Make the script executable
+        os.chmod(output_path, 0o755)
+    except Exception as e:
+        print(f"Error writing or setting permissions for shell script '{output_path}': {e}")
+        sys.exit(1)
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='Process ExifTool commands, select target images interactively, and generate a shell script.',
+        epilog='Example: ./exiftool-prep.py commands.txt'
+    )
+    parser.add_argument('input_file', help='Path to the ExifTool commands file (e.g., Fuji_400H_ExifToolCmds.txt)')
+    args = parser.parse_args()
+
+    # Read the commands (now cleaned) and extract frame count
+    commands = read_commands(args.input_file)
+    frame_count = extract_frame_count(commands[-1]) # Will use the last non-empty line
+
+    # --- Get user input for modifications ---
+    print("\n--- Image File Configuration ---")
+
+    current_dir = os.getcwd()
+    image_path = "" # Initialize image_path
+    while True:
+        image_path_input = input(f"Enter the path to the directory containing image files (press Enter to use current: {current_dir}): ").strip()
+        # Assign chosen/default path to image_path
+        image_path = image_path_input if image_path_input else current_dir
+        if Path(image_path).is_dir():
+            break
+        else:
+            print(f"Error: '{image_path}' is not a valid directory. Please try again.")
+
+    file_extension = input("Enter the image file extension (e.g., .jpg, .tif - default: .jpg): ").strip()
+    if not file_extension:
+        file_extension = ".jpg"
+    elif not file_extension.startswith('.'):
+        file_extension = f".{file_extension}"
+
+    # --- Find and Select Image Files ---
+    print(f"\nScanning '{image_path}' for '{file_extension}' files...")
+    found_files = find_image_files(image_path, file_extension)
+
+    if not found_files:
+        print(f"Error: No files matching '{file_extension}' found in '{image_path}'.")
+        sys.exit(1)
+
+    selected_files = select_image_files(found_files, frame_count)
+
+    if not selected_files: # Should only happen if user explicitly cancels
+        print("No image files selected. Exiting.")
+        sys.exit(0)
+
+    if len(selected_files) < len(commands):
+         print(f"\nWarning: Only {len(selected_files)} images were selected. The first {len(selected_files)} commands will be used.")
+
+    # --- Generate Final Commands ---
+    # Pass the confirmed image_path to generate_final_commands
+    final_commands = generate_final_commands(commands, selected_files, image_path)
+
+
+    # --- Preview and Confirm Script Generation ---
+    print("\n--- Preview of Final Commands (first 3) ---")
+    for cmd in final_commands[:3]:
+        print(cmd.strip())
+    if len(final_commands) > 3:
+        print(f"... and {len(final_commands) - 3} more commands")
+
+    confirm = input("\nGenerate the shell script with these commands? (y/n): ").strip().lower()
+    if confirm != 'y':
+        print("Script generation cancelled.")
+        sys.exit(0)
+
+    # --- Generate Shell Script ---
+    output_file = f"run_exiftool_{Path(args.input_file).stem}.sh" 
+    # Pass necessary info to generate_shell_script
+    generate_shell_script(
+        final_commands,
+        output_path=output_file,
+        input_filename=Path(args.input_file).name,
+        target_dir=image_path
+    )
+
+
+    print(f"\nShell script generated: {output_file}")
+    print("The script is executable and ready to run.")
+    print(f"Make sure to review the script '{output_file}' before execution.")
+
+if __name__ == "__main__":
+    main()
