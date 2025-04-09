@@ -46,6 +46,7 @@ This script helps photographers who use the [ExifNotes](https://play.google.com/
    - Select starting image if needed
    - Confirm the selection
 4. Review the generated shell script before running it
+5. Run the script: `./<path to images>/run_exiftool_Fuji_400H_ExifToolCmds.sh`
 
 ## Requirements
 
