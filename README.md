@@ -4,7 +4,7 @@ A Python script that converts a text file exported from [ExifNotes](https://play
 
 ## Purpose
 
-This script helps photographers who use the [ExifNotes](https://play.google.com/store/apps/details?id=com.tommihirvonen.exifnotes&hl=en-US) app to maintain notes about their images' metadata. It converts the exported [ExifNotes](https://play.google.com/store/apps/details?id=com.tommihirvonen.exifnotes&hl=en-US) text file into an executable shell script with [ExifTool](https://exiftool.org/) commands. With one command you can then update the image files without having to rename or move them.
+This script helps photographers who use the [ExifNotes](https://play.google.com/store/apps/details?id=com.tommihirvonen.exifnotes&hl=en-US) app to maintain notes about their images' metadata. It converts the exported [ExifNotes](https://play.google.com/store/apps/details?id=com.tommihirvonen.exifnotes&hl=en-US) text file into an executable shell script with [ExifTool](https://exiftool.org/) commands. With one command you can then update the image files *without having to rename or move them*.
 
 ## Features
 
