@@ -1,19 +1,18 @@
 # ExifNotes to ExifTool
 
-A Python script that converts a text file exported from ExifNotes into an executable shell script, with interactive file selection and validation.
+A Python script that converts a text file exported from [ExifNotes](https://play.google.com/store/apps/details?id=com.tommihirvonen.exifnotes&hl=en-US) into an executable shell script, with interactive file selection and validation.
 
 ## Purpose
 
-This script helps photographers who use the ExifNotes app to maintain notes about their images' metadata. It converts the exported ExifNotes text file into executable ExifTool commands that can be run against actual image files.
+This script helps photographers who use the [ExifNotes](https://play.google.com/store/apps/details?id=com.tommihirvonen.exifnotes&hl=en-US) app to maintain notes about their images' metadata. It converts the exported [ExifNotes](https://play.google.com/store/apps/details?id=com.tommihirvonen.exifnotes&hl=en-US) text file into executable [ExifTool](https://exiftool.org/) commands that can be run against actual image files.
 
 ## Features
 
-- Reads a text file exported from ExifNotes containing ExifTool commands
-- Extracts the expected number of frames from the last command
+- Reads a text file exported from [ExifNotes](https://play.google.com/store/apps/details?id=com.tommihirvonen.exifnotes&hl=en-US) containing [ExifTool](https://exiftool.org/) commands
 - Interactively allows you to:
   - Specify the directory containing your image files
-  - Choose the file extension to process
-  - Select the starting image when there are more images than commands
+  - Choose the file extension to process (if you forgot to set it in the ExifNotes app)
+  - Select the starting image when there are more images than commands (if you shot more frames than you logged)
 - Validates the number of available images against the number of commands
 - Generates an executable shell script with the modified commands
 
