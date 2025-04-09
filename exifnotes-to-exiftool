@@ -174,7 +174,9 @@ def generate_final_commands(commands, selected_files, image_path):
 def generate_shell_script(commands, output_path, input_filename, target_dir):
     """Generate a shell script with the modified commands."""
     try:
-        with open(output_path, 'w') as f:
+        # Create the output path in the target directory
+        output_file = Path(target_dir) / output_path
+        with open(output_file, 'w') as f:
             f.write('#!/bin/bash\n\n')
             f.write(f'# Generated ExifTool commands from: {input_filename}\n')
             f.write(f'# Target directory: {os.path.abspath(target_dir)}\n\n') # Informative comment
@@ -182,9 +184,10 @@ def generate_shell_script(commands, output_path, input_filename, target_dir):
                 f.write(cmd)
 
         # Make the script executable
-        os.chmod(output_path, 0o755)
+        os.chmod(output_file, 0o755)
+        return str(output_file)  # Return the full path of the generated script
     except Exception as e:
-        print(f"Error writing or setting permissions for shell script '{output_path}': {e}")
+        print(f"Error writing or setting permissions for shell script '{output_file}': {e}")
         sys.exit(1)
 
 def main():
@@ -255,18 +258,17 @@ def main():
 
     # --- Generate Shell Script ---
     output_file = f"run_exiftool_{Path(args.input_file).stem}.sh" 
-    # Pass necessary info to generate_shell_script
-    generate_shell_script(
+    # Pass necessary info to generate_shell_script and get the full path
+    script_path = generate_shell_script(
         final_commands,
         output_path=output_file,
         input_filename=Path(args.input_file).name,
         target_dir=image_path
     )
 
-
-    print(f"\nShell script generated: {output_file}")
+    print(f"\nShell script generated: {script_path}")
     print("The script is executable and ready to run.")
-    print(f"Make sure to review the script '{output_file}' before execution.")
+    print(f"Make sure to review the script before execution.")
 
 if __name__ == "__main__":
     main()
