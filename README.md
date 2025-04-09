@@ -9,11 +9,10 @@ This script helps photographers who use the [ExifNotes](https://play.google.com/
 ## Features
 
 - Reads a text file exported from [ExifNotes](https://play.google.com/store/apps/details?id=com.tommihirvonen.exifnotes&hl=en-US) containing [ExifTool](https://exiftool.org/) commands
-- Extracts the expected number of frames from the last command
 - Interactively allows you to:
   - Specify the directory containing your image files
-  - Choose the file extension to process
-  - Select the starting image when there are more images than commands
+  - Choose the file extension to process (if you forgot to set it in the ExifNotes app)
+  - Select the starting image when there are more images than commands (if you shot more frames than you logged)
 - Validates the number of available images against the number of commands
 - Generates an executable shell script with the modified commands
 
