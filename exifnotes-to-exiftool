@@ -13,14 +13,14 @@ def read_commands(file_path):
             # Read lines, strip leading/trailing whitespace, filter out empty lines
             commands = [line.strip() for line in f if line.strip()]
         if not commands:
-            print(f"Error: Input file '{file_path}' contains no valid command lines.")
+            print(f"\033[91mError:\033[0m Input file '{file_path}' contains no valid command lines.")
             sys.exit(1)
         return commands
     except FileNotFoundError:
-        print(f"Error: Input file '{file_path}' does not exist.")
+        print(f"\033[91mError:\033[0m Input file '{file_path}' does not exist.")
         sys.exit(1)
     except Exception as e:
-        print(f"Error reading file '{file_path}': {e}")
+        print(f"\033[91mError:\033[0m reading file '{file_path}': {e}")
         sys.exit(1)
 
 def extract_frame_count(last_command):
@@ -30,7 +30,7 @@ def extract_frame_count(last_command):
     if match:
         return int(match.group(1))
     else:
-        print("Error: Could not determine frame count from the last command line:")
+        print(f"\033[91mError:\033[0m Could not determine frame count from the last command line:")
         print(f"  Expected pattern like '*_12.jpg' at the end.")
         print(f"  Last command line processed: {last_command}") # Show the problematic line
         sys.exit(1)
@@ -46,7 +46,7 @@ def find_image_files(image_path, file_extension):
     try:
         p = Path(image_path)
         if not p.is_dir():
-            print(f"Error: Image path '{image_path}' is not a valid directory.")
+            print(f"\033[91mError:\033[0m Image path '{image_path}' is not a valid directory.")
             sys.exit(1)
 
         # Use glob to find files matching the extension
@@ -56,7 +56,7 @@ def find_image_files(image_path, file_extension):
         sorted_files = sorted(files, key=natural_sort_key)
         return sorted_files
     except Exception as e:
-        print(f"Error accessing image path '{image_path}': {e}")
+        print(f"\033[91mError:\033[0m accessing image path '{image_path}': {e}")
         sys.exit(1)
 
 def select_image_files(found_files, frame_count):
@@ -85,7 +85,7 @@ def select_image_files(found_files, frame_count):
                     if filename in found_files:
                         start_index = found_files.index(filename)
                     else:
-                        print(f"Error: Filename '{filename}' not found in the directory.")
+                        print(f"\033[91mError:\033[0m Filename '{filename}' not found in the directory.")
                         continue # Re-prompt
                 else:
                     print("Invalid choice number.")
@@ -97,7 +97,7 @@ def select_image_files(found_files, frame_count):
             # Validate selection range
             end_index = start_index + frame_count
             if end_index > num_found:
-                print(f"Error: Selecting {frame_count} files starting from {found_files[start_index]} goes beyond the available {num_found} files.")
+                print(f"\033[91mError:\033[0m Selecting {frame_count} files starting from {found_files[start_index]} goes beyond the available {num_found} files.")
                 print("Please choose a different starting file.")
                 continue # Re-prompt
 
@@ -105,7 +105,7 @@ def select_image_files(found_files, frame_count):
             print(f"\nSelected files: {selected_files[0]} ... {selected_files[-1]} ({len(selected_files)} files)")
 
             if end_index < num_found:
-                print(f"Warning: There are {num_found - end_index} remaining image files in the directory after this selection.")
+                print(f"\033[93mWarning:\033[0m There are {num_found - end_index} remaining image files in the directory after this selection.")
                 proceed = input("Do you want to proceed with this selection? (y/n): ").strip().lower()
                 if proceed != 'y':
                     print("Selection cancelled. Please choose again.")
@@ -117,7 +117,7 @@ def select_image_files(found_files, frame_count):
                  break # Valid selection
 
         elif num_found < frame_count:
-            print(f"\nWarning: Found only {num_found} images, but expected {frame_count} files.")
+            print(f"\033[93mWarning:\033[0m Found only {num_found} images, but expected {frame_count} files.")
             print(f"The script will only use the first {num_found} files for the available files.")
             selected_files = found_files
             proceed = input("Do you want to proceed? (y/n): ").strip().lower()
@@ -156,7 +156,7 @@ def generate_final_commands(commands, selected_files, image_path):
 
         # Sanity check: if substitution failed, maybe the pattern wasn't at the end
         if modified_cmd == cmd_template:
-             print(f"Warning: Could not replace filename pattern in command: {cmd_template}")
+             print(f"\033[93mWarning:\033[0m Could not replace filename pattern in command: {cmd_template}")
              print("         Attempting to append filename.")
              # Try appending if substitution failed (less ideal)
              # Ensure correct splitting and joining
@@ -187,7 +187,7 @@ def generate_shell_script(commands, output_path, input_filename, target_dir):
         os.chmod(output_file, 0o755)
         return str(output_file)  # Return the full path of the generated script
     except Exception as e:
-        print(f"Error writing or setting permissions for shell script '{output_file}': {e}")
+        print(f"\033[91mError:\033[0m writing or setting permissions for shell script '{output_file}': {e}")
         sys.exit(1)
 
 def main():
@@ -214,7 +214,7 @@ def main():
         if Path(image_path).is_dir():
             break
         else:
-            print(f"Error: '{image_path}' is not a valid directory. Please try again.")
+            print(f"\033[91mError:\033[0m '{image_path}' is not a valid directory. Please try again.")
 
     file_extension = input("Enter the image file extension (e.g., .jpg, .tif - default: .jpg): ").strip()
     if not file_extension:
@@ -227,7 +227,7 @@ def main():
     found_files = find_image_files(image_path, file_extension)
 
     if not found_files:
-        print(f"Error: No files matching '{file_extension}' found in '{image_path}'.")
+        print(f"\033[91mError:\033[0m No files matching '{file_extension}' found in '{image_path}'.")
         sys.exit(1)
 
     selected_files = select_image_files(found_files, frame_count)
@@ -237,7 +237,7 @@ def main():
         sys.exit(0)
 
     if len(selected_files) < len(commands):
-         print(f"\nWarning: Only {len(selected_files)} images were selected. The first {len(selected_files)} commands will be used.")
+         print(f"\033[93mWarning:\033[0m Only {len(selected_files)} images were selected. The first {len(selected_files)} commands will be used.")
 
     # --- Generate Final Commands ---
     # Pass the confirmed image_path to generate_final_commands
@@ -266,7 +266,7 @@ def main():
         target_dir=image_path
     )
 
-    print(f"\nShell script generated: {script_path}")
+    print(f"\nShell script generated: \033[1m{script_path}\033[0m")
     print("The script is executable and ready to run.")
     print(f"Make sure to review the script before execution.")
 
