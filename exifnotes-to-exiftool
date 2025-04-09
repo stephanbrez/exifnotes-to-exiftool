@@ -129,12 +129,6 @@ def select_image_files(found_files, frame_count):
         else: # num_found == frame_count
             print(f"\nFound {num_found} images, matching the {frame_count} commands.")
             selected_files = found_files
-            proceed = input("Do you want to proceed? (y/n): ").strip().lower()
-            if proceed != 'y':
-                print("Script execution cancelled.")
-                sys.exit(0)
-            else:
-                 break # Confirmed to proceed
 
     return selected_files
 
