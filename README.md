@@ -12,9 +12,11 @@ This script helps photographers who use the [ExifNotes](https://play.google.com/
 - Interactively allows you to:
   - Specify the directory containing your image files
   - Choose the file extension to process (if you forgot to set it in the ExifNotes app)
+  - Enter film stock information (film size and film type)
   - Select the starting image when there are more images than commands (if you shot more frames than you logged)
 - Validates the number of available images against the number of commands
 - Generates an executable shell script with the modified commands
+- Adds hierarchical subject metadata for film organization in Lightroom
 
 ## Installation
 
@@ -43,6 +45,8 @@ This script helps photographers who use the [ExifNotes](https://play.google.com/
 3. Follow the interactive prompts to:
    - Specify the image directory (or use current directory)
    - Enter the file extension (e.g., .jpg, .tif)
+   - Select the film size from a menu (35mm, 120, 4x5, 5x7, 8x10, or custom)
+   - Enter the film stock name (e.g., Portra 400, Tri-X 400)
    - Select starting image if needed
    - Confirm the selection
 4. Review the generated shell script before running it
@@ -63,11 +67,12 @@ exiftool -Make="Hasselblad" -Model="SWC/M" -DateTime="2024:10:12 16:26" *_2.jpg
 
 The script will:
 1. Detect that you need 2 images
-2. Let you select which images to use
-3. Generate a shell script with commands like:
+2. Prompt you for film size and stock
+3. Let you select which images to use
+4. Generate a shell script with commands like:
    ```bash
-   exiftool -Make="Hasselblad" -Model="SWC/M" -DateTime="2024:10:12 16:19" "path/to/your/image1.jpg"
-   exiftool -Make="Hasselblad" -Model="SWC/M" -DateTime="2024:10:12 16:26" "path/to/your/image2.jpg"
+   exiftool -Make="Hasselblad" -Model="SWC/M" -DateTime="2024:10:12 16:19" "path/to/your/image1.jpg" -XMP-lr:HierarchicalSubject+="Film|35mm|Portra 400"
+   exiftool -Make="Hasselblad" -Model="SWC/M" -DateTime="2024:10:12 16:26" "path/to/your/image2.jpg" -XMP-lr:HierarchicalSubject+="Film|35mm|Portra 400"
    ```
 
 ## Notes
@@ -77,4 +82,42 @@ The script will:
   - Fewer images than commands: Warns you and lets you proceed with available images
   - Equal number of images and commands: Proceeds directly
 - All paths in the generated script are properly quoted for shell safety
-- The generated script is made executable automatically 
+- The generated script is made executable automatically
+
+## Film Stock Hierarchy
+
+When you enter film size and stock information, the script adds metadata using the XMP `lr:HierarchicalSubject` tag (Lightroom Hierarchical Subject). This creates a three-level hierarchy that organizes your images in Lightroom:
+
+```
+Film|35mm|Portra 400
+```
+
+### Hierarchy Levels
+
+| Level | Example | Description |
+|-------|---------|-------------|
+| 1 | `Film` | Top-level category (always "Film") |
+| 2 | `35mm` | Film size (from selection menu) |
+| 3 | `Portra 400` | Film stock name (your input) |
+
+### Available Film Sizes
+
+The script provides a preset menu of common film sizes:
+- 35mm
+- 120
+- 4x5
+- 5x7
+- 8x10
+- Custom (enter your own size)
+
+### Generated Commands
+
+The generated ExifTool commands include the hierarchical subject:
+```bash
+exiftool -Make="Hasselblad" -Model="SWC/M" "image1.jpg" -XMP-lr:HierarchicalSubject+="Film|35mm|Portra 400"
+```
+
+This allows you to:
+- Filter images by film type in Lightroom
+- Quickly find all images shot on a specific stock
+- Organize your film scans using Lightroom's keyword hierarchy 
