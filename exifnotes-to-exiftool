@@ -3,15 +3,18 @@
 import argparse
 import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 
+MAX_MENU_OPTIONS = 3
+DEFAULT_FILE_PERMISSIONS = 0o755
 
-def read_commands(file_path):
+
+def read_commands(file_path: str) -> list[str]:
     """Read ExifTool commands from a file, stripping whitespace and filtering empty lines."""
     try:
         with open(file_path, "r") as f:
-            # Read lines, strip leading/trailing whitespace, filter out empty lines
             commands = [line.strip() for line in f if line.strip()]
         if not commands:
             print(
@@ -22,15 +25,17 @@ def read_commands(file_path):
     except FileNotFoundError:
         print(f"\033[91mError:\033[0m Input file '{file_path}' does not exist.")
         sys.exit(1)
-    except Exception as e:
+    except PermissionError:
+        print(f"\033[91mError:\033[0m Permission denied reading file '{file_path}'.")
+        sys.exit(1)
+    except OSError as e:
         print(f"\033[91mError:\033[0m reading file '{file_path}': {e}")
         sys.exit(1)
 
 
-def extract_frame_count(last_command):
+def extract_frame_count(last_command: str) -> int:
     """Extract the frame count from the filename pattern in the last command."""
-    # The command is already stripped, so regex is simpler
-    match = re.search(r"\*_(\d+)\.\w+$", last_command)  # Removed \s* before $
+    match = re.search(r"\*_(\d+)\.\w+$", last_command)
     if match:
         return int(match.group(1))
     else:
@@ -38,14 +43,68 @@ def extract_frame_count(last_command):
             f"\033[91mError:\033[0m Could not determine frame count from the last command line:"
         )
         print(f"  Expected pattern like '*_12.jpg' at the end.")
-        print(
-            f"  Last command line processed: {last_command}"
-        )  # Show the problematic line
+        print(f"  Last command line processed: {last_command}")
         sys.exit(1)
 
 
-# New function for natural sorting key
-def natural_sort_key(s):
+def get_film_info() -> str:
+    """Prompt user for film size and stock, returning hierarchical subject string."""
+    # Define common film sizes
+    film_sizes = ["35mm", "120", "4x5", "5x7", "8x10"]
+    
+    print("\n--- Film Stock Information ---")
+    
+    # Prompt for film size selection
+    print("Select film size:")
+    for i, size in enumerate(film_sizes, 1):
+        print(f"  {i}. {size}")
+    print(f"  {len(film_sizes) + 1}. Enter custom size")
+    
+    while True:
+        try:
+            choice_input = input(f"Enter your choice (1-{len(film_sizes) + 1}): ")
+            if not choice_input:
+                print("Invalid input. Please enter a number.")
+                continue
+            choice = choice_input.strip()
+            choice_num = int(choice)
+            if 1 <= choice_num <= len(film_sizes):
+                film_size = film_sizes[choice_num - 1]
+                break
+            elif choice_num == len(film_sizes) + 1:
+                film_size_input = input("Enter custom film size: ")
+                if not film_size_input:
+                    print("Film size cannot be empty.")
+                    continue
+                film_size = film_size_input.strip()
+                if film_size:
+                    break
+                else:
+                    print("Film size cannot be empty.")
+            else:
+                print(f"Invalid choice. Please enter a number between 1 and {len(film_sizes) + 1}.")
+        except ValueError:
+            print("Invalid input. Please enter a number.")
+    
+    # Prompt for film stock
+    while True:
+        film_stock_input = input("Enter film stock (e.g., Portra 400, Tri-X 400): ")
+        if not film_stock_input:
+            print("Film stock cannot be empty.")
+            continue
+        film_stock = film_stock_input.strip()
+        if film_stock:
+            break
+        else:
+            print("Film stock cannot be empty.")
+    
+    # Build hierarchical subject string
+    hierarchical_subject = f"Film|{film_size}|{film_stock}"
+    print(f"\nFilm info set to: {hierarchical_subject}")
+    return hierarchical_subject
+
+
+def natural_sort_key(s: str) -> list[str | int]:
     """Return a list of strings and integers for natural sorting."""
     return [
         int(text) if text.isdigit() else text.lower()
@@ -53,7 +112,7 @@ def natural_sort_key(s):
     ]
 
 
-def find_image_files(image_path, file_extension):
+def find_image_files(image_path: str, file_extension: str) -> list[str]:
     """Find and sort image files in the specified path naturally."""
     try:
         p = Path(image_path)
@@ -63,18 +122,19 @@ def find_image_files(image_path, file_extension):
             )
             sys.exit(1)
 
-        # Use glob to find files matching the extension
         files = [f.name for f in p.glob(f"*{file_extension}") if f.is_file()]
 
-        # Use custom natural sort key
         sorted_files = sorted(files, key=natural_sort_key)
         return sorted_files
-    except Exception as e:
+    except PermissionError:
+        print(f"\033[91mError:\033[0m Permission denied accessing '{image_path}'.")
+        sys.exit(1)
+    except OSError as e:
         print(f"\033[91mError:\033[0m accessing image path '{image_path}': {e}")
         sys.exit(1)
 
 
-def select_image_files(found_files, frame_count):
+def select_image_files(found_files: list[str], frame_count: int) -> list[str]:
     """Handle user interaction to select image files based on counts.
 
     Parameters
@@ -95,18 +155,22 @@ def select_image_files(found_files, frame_count):
     It also warns and confirms with the user if fewer files are found than expected.
     """
     num_found = len(found_files)
-    selected_files = []
+    selected_files: list[str] = []
 
-    while True:  # Loop until valid selection and confirmation
+    while True:
         if num_found > frame_count:
             print(f"\nFound {num_found} images, but expected {frame_count} files.")
             print("Please choose the starting image file for the commands:")
-            max_options = min(3, num_found)
+            max_options = min(MAX_MENU_OPTIONS, num_found)
             for i in range(max_options):
                 print(f"  {i+1}. {found_files[i]}")
             print(f"  {max_options + 1}. Enter specific filename")
 
-            choice = input("Enter your choice (1-{}): ".format(max_options + 1)).strip()
+            choice_input = input(f"Enter your choice (1-{max_options + 1}): ")
+            if not choice_input:
+                print("Invalid input. Please enter a number.")
+                continue  # Re-prompt
+            choice = choice_input.strip()
             start_index = -1
 
             try:
@@ -114,7 +178,11 @@ def select_image_files(found_files, frame_count):
                 if 1 <= choice_num <= max_options:
                     start_index = choice_num - 1
                 elif choice_num == max_options + 1:
-                    filename = input("Enter the starting filename: ").strip()
+                    filename_input = input("Enter the starting filename: ")
+                    if not filename_input:
+                        print("Filename cannot be empty.")
+                        continue  # Re-prompt
+                    filename = filename_input.strip()
                     if filename in found_files:
                         start_index = found_files.index(filename)
                     else:
@@ -136,7 +204,7 @@ def select_image_files(found_files, frame_count):
                     f"\033[91mError:\033[0m Selecting {frame_count} files starting from {found_files[start_index]} goes beyond the available {num_found} files."
                 )
                 print("Please choose a different starting file.")
-                continue  # Re-prompt
+                continue
 
             selected_files = found_files[start_index:end_index]
             print(
@@ -147,19 +215,18 @@ def select_image_files(found_files, frame_count):
                 print(
                     f"\033[93mWarning:\033[0m There are {num_found - end_index} remaining image files in the directory after this selection."
                 )
-                proceed = (
-                    input("Do you want to proceed with this selection? (y/n): ")
-                    .strip()
-                    .lower()
-                )
+                proceed_input = input("Do you want to proceed with this selection? (y/n): ")
+                if not proceed_input:
+                    print("Invalid input. Please enter 'y' or 'n'.")
+                    continue  # Re-prompt
+                proceed = proceed_input.strip().lower()
                 if proceed != "y":
                     print("Selection cancelled. Please choose again.")
-                    continue  # Re-prompt
+                    continue
                 else:
-                    break  # Valid selection confirmed
+                    break
             else:
-                # Selection fits perfectly or ends exactly at the last file
-                break  # Valid selection
+                break
 
         elif num_found < frame_count:
             print(
@@ -169,13 +236,17 @@ def select_image_files(found_files, frame_count):
                 f"The script will only use the first {num_found} files for the available files."
             )
             selected_files = found_files
-            proceed = input("Do you want to proceed? (y/n): ").strip().lower()
+            proceed_input = input("Do you want to proceed? (y/n): ")
+            if not proceed_input:
+                print("Invalid input. Please enter 'y' or 'n'.")
+                continue  # Re-prompt
+            proceed = proceed_input.strip().lower()
             if proceed != "y":
                 print("Script execution cancelled.")
                 sys.exit(0)
             else:
-                break  # Confirmed to proceed
-        else:  # num_found == frame_count
+                break
+        else:
             print(f"\nFound {num_found} images, matching the {frame_count} commands.")
             selected_files = found_files
             break
@@ -183,74 +254,63 @@ def select_image_files(found_files, frame_count):
     return selected_files
 
 
-def generate_final_commands(commands, selected_files, image_path):
+def generate_final_commands(commands: list[str], selected_files: list[str], image_path: str, film_info: str) -> list[str]:
     """Generate the final list of commands targeting specific files."""
     final_commands = []
     num_to_process = min(len(commands), len(selected_files))
 
     for i in range(num_to_process):
-        cmd_template = commands[i]  # Already stripped in read_commands
+        cmd_template = commands[i]
         target_file = selected_files[i]
-        # Use Path object for robust path joining
         full_target_path = Path(image_path) / target_file
 
-        # Escape potential special characters in path for shell
-        # Simple approach: wrap in double quotes. May need refinement for complex paths.
-        # Use str(full_target_path) to get the string representation
         quoted_target_path = f'"{str(full_target_path)}"'
 
-        # Replace the old pattern (e.g., *_1.jpg) with the specific quoted path
-        # Regex searches for the last argument starting with *, _, number, dot, extension
-        # Simpler regex now as command is stripped
         modified_cmd = re.sub(
             r"\s+\S*\*_\d+\.\w+$", f" {quoted_target_path}", cmd_template
         )
 
-        # Sanity check: if substitution failed, maybe the pattern wasn't at the end
         if modified_cmd == cmd_template:
             print(
                 f"\033[93mWarning:\033[0m Could not replace filename pattern in command: {cmd_template}"
             )
             print("         Attempting to append filename.")
-            # Try appending if substitution failed (less ideal)
-            # Ensure correct splitting and joining
             cmd_parts = cmd_template.split()
-            if len(cmd_parts) > 1:  # Check if there's more than just the command itself
+            if len(cmd_parts) > 1:
                 modified_cmd = (
                     cmd_parts[0]
                     + " "
                     + " ".join(cmd_parts[1:-1])
                     + f" {quoted_target_path}"
                 )
-            else:  # Only the command itself was present? Append path.
+            else:
                 modified_cmd = cmd_template + f" {quoted_target_path}"
 
-        final_commands.append(modified_cmd + "\n")  # Add newline for script
+        # Add film info to the command
+        final_cmd = f"{modified_cmd.strip()} -XMP-lr:HierarchicalSubject+=\"{film_info}\"\n"
+        final_commands.append(final_cmd)
 
     return final_commands
 
 
-def generate_shell_script(commands, output_path, input_filename, target_dir):
+def generate_shell_script(commands: list[str], output_path: str, input_filename: str, target_dir: str) -> str:
     """Generate a shell script with the modified commands."""
     try:
-        # Create the output path in the target directory
         output_file = Path(target_dir) / output_path
         with open(output_file, "w") as f:
             f.write("#!/bin/bash\n\n")
             f.write(f"# Generated ExifTool commands from: {input_filename}\n")
-            f.write(
-                f"# Target directory: {os.path.abspath(target_dir)}\n\n"
-            )  # Informative comment
+            f.write(f"# Target directory: {os.path.abspath(target_dir)}\n\n")
             for cmd in commands:
                 f.write(cmd)
 
-        # Make the script executable
-        os.chmod(output_file, 0o755)
-        return str(output_file)  # Return the full path of the generated script
-    except Exception as e:
-        print(
-            f"\033[91mError:\033[0m writing or setting permissions for shell script '{output_file}': {e}"
-        )
+        os.chmod(output_file, DEFAULT_FILE_PERMISSIONS)
+        return str(output_file)
+    except PermissionError:
+        print(f"\033[91mError:\033[0m Permission denied writing shell script '{output_file}'.")
+        sys.exit(1)
+    except OSError as e:
+        print(f"\033[91mError:\033[0m writing shell script '{output_file}': {e}")
         sys.exit(1)
 
 
@@ -280,7 +340,7 @@ def main():
     commands = read_commands(args.input_file)
     frame_count = extract_frame_count(commands[-1])  # Will use the last non-empty line
 
-    # --- Get user input for modifications ---
+     # --- Get user input for modifications ---
     print("\n--- Image File Configuration ---")
 
     current_dir = os.getcwd()
@@ -306,6 +366,9 @@ def main():
     elif not file_extension.startswith("."):
         file_extension = f".{file_extension}"
 
+    # Get film stock information
+    film_info = get_film_info()
+
     # --- Find and Select Image Files ---
     print(f"\nScanning '{image_path}' for '{file_extension}' files...")
     found_files = find_image_files(image_path, file_extension)
@@ -328,8 +391,8 @@ def main():
         )
 
     # --- Generate Final Commands ---
-    # Pass the confirmed image_path to generate_final_commands
-    final_commands = generate_final_commands(commands, selected_files, image_path)
+    # Pass the confirmed image_path and film info to generate_final_commands
+    final_commands = generate_final_commands(commands, selected_files, image_path, film_info)
 
     # --- Preview and Confirm Script Generation ---
     print("\n--- Preview of Final Commands (first 3) ---")
@@ -338,11 +401,11 @@ def main():
     if len(final_commands) > 3:
         print(f"... and {len(final_commands) - 3} more commands")
 
-    confirm = (
-        input("\nGenerate the shell script with these commands? (y/n): ")
-        .strip()
-        .lower()
-    )
+    confirm_input = input("\nGenerate the shell script with these commands? (y/n): ")
+    if not confirm_input:
+        print("Invalid input. Please enter 'y' or 'n'.")
+        sys.exit(0)
+    confirm = confirm_input.strip().lower()
     if confirm != "y":
         print("Script generation cancelled.")
         sys.exit(0)
@@ -360,6 +423,18 @@ def main():
     print(f"\nShell script generated: \033[1m{script_path}\033[0m")
     print("The script is executable and ready to run.")
     print(f"Make sure to review the script before execution.")
+
+    run_script_input = input("\nDo you want to run the shell script now? (y/n): ")
+    if not run_script_input:
+        print("Invalid input. Please enter 'y' or 'n'.")
+        sys.exit(0)
+    run_script = run_script_input.strip().lower()
+    if run_script == "y":
+        print(f"\nRunning {script_path}...")
+        result = subprocess.run([script_path])
+        print(f"\nExifTool completed with exit code: {result.returncode}")
+    else:
+        print("Shell script saved. You can run it manually later.")
 
 
 if __name__ == "__main__":
