@@ -134,122 +134,119 @@ def find_image_files(image_path: str, file_extension: str) -> list[str]:
         sys.exit(1)
 
 
-def select_image_files(found_files: list[str], frame_count: int) -> list[str]:
-    """Handle user interaction to select image files based on counts.
+def prompt_filename(found_files: list[str], prompt_label: str, max_options: int, file_extension: str) -> int:
+    """Prompt user to select a filename from the found files list."""
+    print(f"Please choose the {prompt_label} image file:")
+    menu_count = min(max_options, len(found_files))
+    for i in range(menu_count):
+        print(f"  {i+1}. {found_files[i]}")
+    if len(found_files) > max_options:
+        print(f"  ... or type a filename from the directory")
+
+    while True:
+        choice = input(f"Enter menu number (1-{menu_count}) or type filename directly: ").strip()
+        if not choice:
+            print("Invalid input. Please enter a number or filename.")
+            continue
+
+        # Try menu number (only if within valid menu range)
+        if choice.isdigit():
+            choice_num = int(choice)
+            if 1 <= choice_num <= menu_count:
+                return choice_num - 1
+
+        # Try as filename (with and without extension)
+        if choice in found_files:
+            return found_files.index(choice)
+        # Try adding extension if not present
+        if not choice.endswith(file_extension):
+            with_ext = choice + file_extension
+            if with_ext in found_files:
+                return found_files.index(with_ext)
+        print(f"Filename '{choice}' not found. Use menu number or type filename.")
+
+
+def select_image_files(found_files: list[str], frame_count: int, file_extension: str) -> list[str]:
+    """Handle user interaction to select start and end image files, supporting bidirectional walking.
 
     Parameters
     ----------
     found_files : list of str
-        List of filenames found in the specified path.
+        List of filenames found in the specified path, naturally sorted.
     frame_count : int
         The expected number of frames or files required for processing.
 
     Returns
     -------
     selected_files : list of str
-        List of selected image filenames based on user input and validation.
+        List of selected image filenames in the order they'll be processed.
 
     Notes
     -----
-    This function prompts the user to select a starting file if more files are found than needed.
-    It also warns and confirms with the user if fewer files are found than expected.
+    This function prompts for start and end files to define a range. If end comes before
+    start in the sorted list, the range walks backward. If range has more or fewer
+    files than commands, warns and uses available files in order.
     """
     num_found = len(found_files)
-    selected_files: list[str] = []
 
-    while True:
-        if num_found > frame_count:
-            print(f"\nFound {num_found} images, but expected {frame_count} files.")
-            print("Please choose the starting image file for the commands:")
-            max_options = min(MAX_MENU_OPTIONS, num_found)
-            for i in range(max_options):
-                print(f"  {i+1}. {found_files[i]}")
-            print(f"  {max_options + 1}. Enter specific filename")
+    # Handle equal case first - no range selection needed
+    if num_found == frame_count:
+        print(f"\nFound {num_found} images, matching the {frame_count} commands.")
+        return found_files.copy()
 
-            choice_input = input(f"Enter your choice (1-{max_options + 1}): ")
-            if not choice_input:
-                print("Invalid input. Please enter a number.")
-                continue  # Re-prompt
-            choice = choice_input.strip()
-            start_index = -1
+    # Show count info and prompt for start file
+    print(f"\nFound {num_found} images, but expected {frame_count} files.")
 
-            try:
-                choice_num = int(choice)
-                if 1 <= choice_num <= max_options:
-                    start_index = choice_num - 1
-                elif choice_num == max_options + 1:
-                    filename_input = input("Enter the starting filename: ")
-                    if not filename_input:
-                        print("Filename cannot be empty.")
-                        continue  # Re-prompt
-                    filename = filename_input.strip()
-                    if filename in found_files:
-                        start_index = found_files.index(filename)
-                    else:
-                        print(
-                            f"\033[91mError:\033[0m Filename '{filename}' not found in the directory."
-                        )
-                        continue  # Re-prompt
-                else:
-                    print("Invalid choice number.")
-                    continue  # Re-prompt
-            except ValueError:
-                print("Invalid input. Please enter a number.")
-                continue  # Re-prompt
+    start_idx = prompt_filename(found_files, "starting", MAX_MENU_OPTIONS, file_extension)
+    start_filename = found_files[start_idx]
+    print(f"Start file: {start_filename}")
 
-            # Validate selection range
-            end_index = start_index + frame_count
-            if end_index > num_found:
-                print(
-                    f"\033[91mError:\033[0m Selecting {frame_count} files starting from {found_files[start_index]} goes beyond the available {num_found} files."
-                )
-                print("Please choose a different starting file.")
-                continue
+    # Prompt for end file
+    end_idx = prompt_filename(found_files, "ending", MAX_MENU_OPTIONS, file_extension)
+    end_filename = found_files[end_idx]
+    print(f"End file: {end_filename}")
 
-            selected_files = found_files[start_index:end_index]
-            print(
-                f"\nSelected files: {selected_files[0]} ... {selected_files[-1]} ({len(selected_files)} files)"
-            )
+    # Determine direction and build range
+    is_reverse = end_idx < start_idx
 
-            if end_index < num_found:
-                print(
-                    f"\033[93mWarning:\033[0m There are {num_found - end_index} remaining image files in the directory after this selection."
-                )
-                proceed_input = input("Do you want to proceed with this selection? (y/n): ")
-                if not proceed_input:
-                    print("Invalid input. Please enter 'y' or 'n'.")
-                    continue  # Re-prompt
-                proceed = proceed_input.strip().lower()
-                if proceed != "y":
-                    print("Selection cancelled. Please choose again.")
-                    continue
-                else:
-                    break
-            else:
-                break
+    if is_reverse:
+        # Walk backward: from start_idx down to end_idx (inclusive)
+        # Slice end_idx:start_idx+1 gives files from end up to (and including) start, then reverse
+        selected_files = found_files[end_idx:start_idx + 1][::-1]
+    else:
+        # Walk forward: start to end (inclusive)
+        selected_files = found_files[start_idx:end_idx + 1]
 
-        elif num_found < frame_count:
-            print(
-                f"\033[93mWarning:\033[0m Found only {num_found} images, but expected {frame_count} files."
-            )
-            print(
-                f"The script will only use the first {num_found} files for the available files."
-            )
-            selected_files = found_files
-            proceed_input = input("Do you want to proceed? (y/n): ")
-            if not proceed_input:
-                print("Invalid input. Please enter 'y' or 'n'.")
-                continue  # Re-prompt
-            proceed = proceed_input.strip().lower()
-            if proceed != "y":
-                print("Script execution cancelled.")
-                sys.exit(0)
-            else:
-                break
-        else:
-            print(f"\nFound {num_found} images, matching the {frame_count} commands.")
-            selected_files = found_files
-            break
+    range_count = len(selected_files)
+
+    # Summarize selection
+    direction_str = "reverse" if is_reverse else "forward"
+    print(
+        f"\nSelected range: {selected_files[0]} ... {selected_files[-1]} "
+        f"({range_count} files, {direction_str})"
+    )
+
+    # Warn about count mismatch
+    if range_count < frame_count:
+        print(
+            f"\033[93mWarning:\033[0m Range has {range_count} files but {frame_count} commands. "
+            f"Only the first {range_count} commands will be used."
+        )
+    elif range_count > frame_count:
+        print(
+            f"\033[93mWarning:\033[0m Range has {range_count} files but only {frame_count} commands. "
+            f"Files beyond position {frame_count} will be ignored."
+        )
+
+    # Confirm
+    proceed_input = input("Do you want to proceed with this selection? (y/n): ")
+    if not proceed_input:
+        print("Invalid input. Please enter 'y' or 'n'.")
+        return []
+    proceed = proceed_input.strip().lower()
+    if proceed != "y":
+        print("Selection cancelled.")
+        return []
 
     return selected_files
 
@@ -379,7 +376,7 @@ def main():
         )
         sys.exit(1)
 
-    selected_files = select_image_files(found_files, frame_count)
+    selected_files = select_image_files(found_files, frame_count, file_extension)
 
     if not selected_files:  # Should only happen if user explicitly cancels
         print("No image files selected. Exiting.")

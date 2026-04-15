@@ -13,7 +13,7 @@ This script helps photographers who use the [ExifNotes](https://play.google.com/
   - Specify the directory containing your image files
   - Choose the file extension to process (if you forgot to set it in the ExifNotes app)
   - Enter film stock information (film size and film type)
-  - Select the starting image when there are more images than commands (if you shot more frames than you logged)
+  - Select start and end image files to define a range (supports reverse walking)
 - Validates the number of available images against the number of commands
 - Generates an executable shell script with the modified commands
 - Adds hierarchical subject metadata for film organization in Lightroom
@@ -47,8 +47,8 @@ This script helps photographers who use the [ExifNotes](https://play.google.com/
    - Enter the file extension (e.g., .jpg, .tif)
    - Select the film size from a menu (35mm, 120, 4x5, 5x7, 8x10, or custom)
    - Enter the film stock name (e.g., Portra 400, Tri-X 400)
-   - Select starting image if needed
-   - Confirm the selection
+   - Select start and end image files to define a range
+   - Confirm the selection (script auto-detects reverse if end comes before start)
 4. Review the generated shell script before running it
 5. Run the script: `./<path to images>/run_exiftool_Fuji_400H_ExifToolCmds.sh`
 
@@ -77,12 +77,14 @@ The script will:
 
 ## Notes
 
-- The script handles three scenarios:
-  - More images than commands: Lets you choose where to start
-  - Fewer images than commands: Warns you and lets you proceed with available images
-  - Equal number of images and commands: Proceeds directly
+- The script handles file range selection:
+  - Equal files and commands: Proceeds directly
+  - More images than commands: Prompts for START and END files to define range
+  - Fewer images than commands: Warns and uses available files
+  - If END comes before START: Automatically walks backward (reverse order)
 - All paths in the generated script are properly quoted for shell safety
 - The generated script is made executable automatically
+- Command order is always sequential from the .txt file; file direction determines mapping
 
 ## Film Stock Hierarchy
 
