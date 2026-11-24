@@ -90,8 +90,9 @@ The script will:
 ## Notes
 
 - The script handles file range selection:
-  - Equal files and commands: Proceeds directly
-  - More images than commands: Prompts for START and END files to define range
+  - Start/end selection is always required; type a range like `1-36` or
+    `36-1` at the start prompt to select both ends at once
+  - More images than commands: start/end files define the range
   - Fewer images than commands: Warns and uses available files
   - If END comes before START: Automatically walks backward (reverse order)
 - All paths in the generated script are properly quoted for shell safety

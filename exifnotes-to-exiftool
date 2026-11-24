@@ -281,21 +281,38 @@ def prompt_filename(
     prompt_label: str,
     options: list[int],
     file_extension: str,
-) -> int:
-    """Prompt user to select a file from menu options, returning its index."""
+    allow_range: bool = False,
+) -> int | tuple[int, int]:
+    """Prompt user to select a file from menu options, returning its index.
+
+    With allow_range, the user may type a range like '1-36' or '36-1'
+    (1-based positions in the full sorted file list); both indices are
+    returned as a tuple, selecting the whole range at once.
+    """
     print(f"Please choose the {prompt_label} image file:")
     for i, idx in enumerate(options):
         print(f"  {i+1}. {found_files[idx]}")
     if len(found_files) > len(options):
         print("  ... or type a filename from the directory")
 
+    range_hint = ", or a range like 1-36" if allow_range else ""
     while True:
         choice = input(
-            f"Enter menu number (1-{len(options)}) or type filename directly: "
+            f"Enter menu number (1-{len(options)}) or type filename directly{range_hint}: "
         ).strip()
         if not choice:
             print("Invalid input. Please enter a number or filename.")
             continue
+
+        # Try a start-end range (1-based positions in the full list)
+        if allow_range:
+            match = re.fullmatch(r"(\d+)\s*-\s*(\d+)", choice)
+            if match:
+                a, b = int(match.group(1)), int(match.group(2))
+                if 1 <= a <= len(found_files) and 1 <= b <= len(found_files):
+                    return (a - 1, b - 1)
+                print(f"Range must be between 1 and {len(found_files)}.")
+                continue
 
         # Try menu number (only if within valid menu range)
         if choice.isdigit():
@@ -361,6 +378,7 @@ def select_image_files(
         if start_prefill is not None
         else None
     )
+    range_selected = False
     if start_idx is not None:
         print(f"Start file (--start): {found_files[start_idx]}")
     else:
@@ -368,30 +386,40 @@ def select_image_files(
             print(
                 f"\033[93mWarning:\033[0m --start '{start_prefill}' matched no file; prompting instead."
             )
-        start_idx = prompt_filename(
-            found_files, "starting", get_menu_options(found_files), file_extension
+        start_result = prompt_filename(
+            found_files, "starting", get_menu_options(found_files), file_extension,
+            allow_range=True,
         )
+        if isinstance(start_result, tuple):
+            start_idx, end_idx = start_result
+            range_selected = True
+        else:
+            start_idx = start_result
     start_filename = found_files[start_idx]
     print(f"Start file: {start_filename}")
 
-    # Prompt for end file (options adapt to where the start file sits)
-    end_idx = (
-        resolve_file_choice(end_prefill, found_files, file_extension)
-        if end_prefill is not None
-        else None
-    )
-    if end_idx is not None:
-        print(f"End file (--end): {found_files[end_idx]}")
+    if range_selected:
+        end_filename = found_files[end_idx]
+        print(f"End file: {end_filename}")
     else:
-        if end_prefill is not None:
-            print(
-                f"\033[93mWarning:\033[0m --end '{end_prefill}' matched no file; prompting instead."
-            )
-        end_idx = prompt_filename(
-            found_files, "ending", get_menu_options(found_files, start_idx), file_extension
+        # Prompt for end file (options adapt to where the start file sits)
+        end_idx = (
+            resolve_file_choice(end_prefill, found_files, file_extension)
+            if end_prefill is not None
+            else None
         )
-    end_filename = found_files[end_idx]
-    print(f"End file: {end_filename}")
+        if end_idx is not None:
+            print(f"End file (--end): {found_files[end_idx]}")
+        else:
+            if end_prefill is not None:
+                print(
+                    f"\033[93mWarning:\033[0m --end '{end_prefill}' matched no file; prompting instead."
+                )
+            end_idx = prompt_filename(
+                found_files, "ending", get_menu_options(found_files, start_idx), file_extension
+            )
+        end_filename = found_files[end_idx]
+        print(f"End file: {end_filename}")
 
     # Determine direction and build range
     is_reverse = end_idx < start_idx
