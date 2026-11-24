@@ -43,6 +43,9 @@ This script helps photographers who use the [ExifNotes](https://play.google.com/
      ```bash
      python3 <path to file>/exifnotes-to-exiftool Fuji_400H_ExifToolCmds.txt
      ```
+   - Optional pre-fill flags (anything not supplied is still prompted):
+     - `--start 2 --end IMG_0003.jpg` — pre-select the range (1-based list position or filename)
+     - `--film "35mm|Portra 400"` — set film info non-interactively
    - The command file argument is optional: if omitted, the tool looks in the
      current directory for a `.txt` file whose last line matches the ExifNotes
      command pattern, using it automatically when exactly one is found and

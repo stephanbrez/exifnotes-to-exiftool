@@ -229,6 +229,26 @@ def find_image_files(image_path: str, file_extension: str) -> list[str]:
         sys.exit(1)
 
 
+def resolve_file_choice(
+    choice: str, found_files: list[str], file_extension: str
+) -> int | None:
+    """Resolve a 1-based list position or filename to an index, or None.
+
+    Filenames are matched with and without the extension.
+    """
+    if choice.isdigit():
+        n = int(choice)
+        if 1 <= n <= len(found_files):
+            return n - 1
+    if choice in found_files:
+        return found_files.index(choice)
+    if not choice.endswith(file_extension):
+        with_ext = choice + file_extension
+        if with_ext in found_files:
+            return found_files.index(with_ext)
+    return None
+
+
 def get_menu_options(found_files: list[str], start_idx: int | None = None) -> list[int]:
     """Return candidate file indices to show in a start/end selection menu.
 
@@ -294,7 +314,13 @@ def prompt_filename(
         print(f"Filename '{choice}' not found. Use menu number or type filename.")
 
 
-def select_image_files(found_files: list[str], frame_count: int, file_extension: str) -> list[str]:
+def select_image_files(
+    found_files: list[str],
+    frame_count: int,
+    file_extension: str,
+    start_prefill: str | None = None,
+    end_prefill: str | None = None,
+) -> list[str]:
     """Handle user interaction to select start and end image files, supporting bidirectional walking.
 
     Parameters
@@ -303,6 +329,12 @@ def select_image_files(found_files: list[str], frame_count: int, file_extension:
         List of filenames found in the specified path, naturally sorted.
     frame_count : int
         The expected number of frames or files required for processing.
+    file_extension : str
+        The image file extension used for matching filenames.
+    start_prefill : str, optional
+        Pre-selected start file (1-based position or filename) from --start.
+    end_prefill : str, optional
+        Pre-selected end file (1-based position or filename) from --end.
 
     Returns
     -------
@@ -324,16 +356,40 @@ def select_image_files(found_files: list[str], frame_count: int, file_extension:
     if num_found != frame_count:
         print(f"Command file contains {frame_count} commands.")
 
-    start_idx = prompt_filename(
-        found_files, "starting", get_menu_options(found_files), file_extension
+    start_idx = (
+        resolve_file_choice(start_prefill, found_files, file_extension)
+        if start_prefill is not None
+        else None
     )
+    if start_idx is not None:
+        print(f"Start file (--start): {found_files[start_idx]}")
+    else:
+        if start_prefill is not None:
+            print(
+                f"\033[93mWarning:\033[0m --start '{start_prefill}' matched no file; prompting instead."
+            )
+        start_idx = prompt_filename(
+            found_files, "starting", get_menu_options(found_files), file_extension
+        )
     start_filename = found_files[start_idx]
     print(f"Start file: {start_filename}")
 
     # Prompt for end file (options adapt to where the start file sits)
-    end_idx = prompt_filename(
-        found_files, "ending", get_menu_options(found_files, start_idx), file_extension
+    end_idx = (
+        resolve_file_choice(end_prefill, found_files, file_extension)
+        if end_prefill is not None
+        else None
     )
+    if end_idx is not None:
+        print(f"End file (--end): {found_files[end_idx]}")
+    else:
+        if end_prefill is not None:
+            print(
+                f"\033[93mWarning:\033[0m --end '{end_prefill}' matched no file; prompting instead."
+            )
+        end_idx = prompt_filename(
+            found_files, "ending", get_menu_options(found_files, start_idx), file_extension
+        )
     end_filename = found_files[end_idx]
     print(f"End file: {end_filename}")
 
@@ -466,6 +522,22 @@ def main():
         help="Path to the ExifTool commands file (e.g., Fuji_400H_ExifToolCmds.txt). "
         "If omitted, the tool looks for a command file in the current directory.",
     )
+    parser.add_argument(
+        "--start",
+        default=None,
+        help="Pre-select the start file: 1-based position in the sorted file list, or a filename (with or without extension).",
+    )
+    parser.add_argument(
+        "--end",
+        default=None,
+        help="Pre-select the end file: 1-based position in the sorted file list, or a filename (with or without extension).",
+    )
+    parser.add_argument(
+        "--film",
+        default=None,
+        metavar="SIZE|STOCK",
+        help="Set film info non-interactively, e.g. '35mm|Portra 400'. Skips the film prompts.",
+    )
     args = parser.parse_args()
 
     # ─── Resolve the command file ───
@@ -530,7 +602,17 @@ def main():
             file_extension = f".{file_extension}"
 
     # Get film stock information, defaulting to the previous run's values
-    film_info = get_film_info(find_previous_film_info(image_path))
+    if args.film:
+        parts = [p.strip() for p in args.film.split("|")]
+        if len(parts) != 2 or not all(parts):
+            print(
+                f"\033[91mError:\033[0m --film must be 'SIZE|STOCK' (e.g., '35mm|Portra 400'), got: '{args.film}'"
+            )
+            sys.exit(1)
+        film_info = f"Film|{parts[0]}|{parts[1]}"
+        print(f"\nFilm info set to: {film_info}")
+    else:
+        film_info = get_film_info(find_previous_film_info(image_path))
 
     # --- Find and Select Image Files ---
     print(f"\nScanning '{image_path}' for '{file_extension}' files...")
@@ -542,7 +624,10 @@ def main():
         )
         sys.exit(1)
 
-    selected_files = select_image_files(found_files, frame_count, file_extension)
+    selected_files = select_image_files(
+        found_files, frame_count, file_extension,
+        start_prefill=args.start, end_prefill=args.end,
+    )
 
     if not selected_files:  # Should only happen if user explicitly cancels
         print("No image files selected. Exiting.")
