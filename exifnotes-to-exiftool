@@ -165,17 +165,50 @@ def find_image_files(image_path: str, file_extension: str) -> list[str]:
         sys.exit(1)
 
 
-def prompt_filename(found_files: list[str], prompt_label: str, max_options: int, file_extension: str) -> int:
-    """Prompt user to select a filename from the found files list."""
+def get_menu_options(found_files: list[str], start_idx: int | None = None) -> list[int]:
+    """Return candidate file indices to show in a start/end selection menu.
+
+    For the starting prompt (start_idx is None), offers the three lowest
+    files plus the highest file as a reverse-walk shortcut. For the ending
+    prompt, offers the opposite end of the list relative to the start file
+    plus the file adjacent to start. If the start file sits in the lower
+    half of the list, ending options skew high; if it sits in the upper
+    half (midpoint threshold), they skew low. Short lists show every file.
+    """
+    num_found = len(found_files)
+    if num_found <= MAX_MENU_OPTIONS + 1:
+        return list(range(num_found))
+
+    if start_idx is None:
+        candidates = [0, 1, 2, num_found - 1]
+    elif start_idx < num_found // 2:
+        # Start in lower half → offer high files and one step past start
+        candidates = [num_found - 3, num_found - 2, num_found - 1, start_idx + 1]
+    else:
+        # Start in upper half → offer low files and one step before start
+        candidates = [0, 1, 2, start_idx - 1]
+
+    # Dedupe and drop invalid indices, preserving display order
+    return list(dict.fromkeys(i for i in candidates if 0 <= i < num_found))
+
+
+def prompt_filename(
+    found_files: list[str],
+    prompt_label: str,
+    options: list[int],
+    file_extension: str,
+) -> int:
+    """Prompt user to select a file from menu options, returning its index."""
     print(f"Please choose the {prompt_label} image file:")
-    menu_count = min(max_options, len(found_files))
-    for i in range(menu_count):
-        print(f"  {i+1}. {found_files[i]}")
-    if len(found_files) > max_options:
-        print(f"  ... or type a filename from the directory")
+    for i, idx in enumerate(options):
+        print(f"  {i+1}. {found_files[idx]}")
+    if len(found_files) > len(options):
+        print("  ... or type a filename from the directory")
 
     while True:
-        choice = input(f"Enter menu number (1-{menu_count}) or type filename directly: ").strip()
+        choice = input(
+            f"Enter menu number (1-{len(options)}) or type filename directly: "
+        ).strip()
         if not choice:
             print("Invalid input. Please enter a number or filename.")
             continue
@@ -183,8 +216,8 @@ def prompt_filename(found_files: list[str], prompt_label: str, max_options: int,
         # Try menu number (only if within valid menu range)
         if choice.isdigit():
             choice_num = int(choice)
-            if 1 <= choice_num <= menu_count:
-                return choice_num - 1
+            if 1 <= choice_num <= len(options):
+                return options[choice_num - 1]
 
         # Try as filename (with and without extension)
         if choice in found_files:
@@ -220,20 +253,23 @@ def select_image_files(found_files: list[str], frame_count: int, file_extension:
     """
     num_found = len(found_files)
 
-    # Handle equal case first - no range selection needed
-    if num_found == frame_count:
-        print(f"\nFound {num_found} images, matching the {frame_count} commands.")
-        return found_files.copy()
+    print(
+        f"\nFound {num_found} images. Start/end selection is always required; "
+        "please choose the processing range."
+    )
+    if num_found != frame_count:
+        print(f"Command file contains {frame_count} commands.")
 
-    # Show count info and prompt for start file
-    print(f"\nFound {num_found} images, but expected {frame_count} files.")
-
-    start_idx = prompt_filename(found_files, "starting", MAX_MENU_OPTIONS, file_extension)
+    start_idx = prompt_filename(
+        found_files, "starting", get_menu_options(found_files), file_extension
+    )
     start_filename = found_files[start_idx]
     print(f"Start file: {start_filename}")
 
-    # Prompt for end file
-    end_idx = prompt_filename(found_files, "ending", MAX_MENU_OPTIONS, file_extension)
+    # Prompt for end file (options adapt to where the start file sits)
+    end_idx = prompt_filename(
+        found_files, "ending", get_menu_options(found_files, start_idx), file_extension
+    )
     end_filename = found_files[end_idx]
     print(f"End file: {end_filename}")
 
