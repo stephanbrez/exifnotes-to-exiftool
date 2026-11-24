@@ -621,6 +621,14 @@ def main():
         file_extension = detected
         print(f"Using detected file extension: {file_extension}")
     else:
+        # Show what's actually here so a wrong-directory mistake is obvious
+        present = sorted(
+            {f.suffix.lower() for f in Path(image_path).iterdir() if f.is_file() and f.suffix}
+        )
+        if present:
+            print(f"Files in this directory have extensions: {', '.join(present)}")
+        else:
+            print("No files with extensions found in this directory.")
         file_extension = input(
             "Enter the image file extension (e.g., .jpg, .tif - default: .jpg): "
         ).strip()
