@@ -39,6 +39,26 @@ def detect_extension(image_path: str) -> str | None:
     return None
 
 
+def find_command_files(directory: str) -> list[str]:
+    """Return .txt files in directory whose last line matches a command pattern.
+
+    A candidate file's last non-empty line must end with the filename
+    pattern '*_NN.ext' used by ExifNotes exports.
+    """
+    pattern = re.compile(r"\*_\d+\.\w+$")
+    candidates = []
+    for f in sorted(Path(directory).glob("*.txt")):
+        if not f.is_file():
+            continue
+        try:
+            lines = [l.strip() for l in f.read_text().splitlines() if l.strip()]
+        except (OSError, UnicodeDecodeError):
+            continue
+        if lines and pattern.search(lines[-1]):
+            candidates.append(f.name)
+    return candidates
+
+
 def read_commands(file_path: str) -> list[str]:
     """Read ExifTool commands from a file, stripping whitespace and filtering empty lines."""
     try:
@@ -396,18 +416,47 @@ def main():
     )
     parser.add_argument(
         "input_file",
-        help="Path to the ExifTool commands file (e.g., Fuji_400H_ExifToolCmds.txt)",
+        nargs="?",
+        default=None,
+        help="Path to the ExifTool commands file (e.g., Fuji_400H_ExifToolCmds.txt). "
+        "If omitted, the tool looks for a command file in the current directory.",
     )
     args = parser.parse_args()
 
+    # ─── Resolve the command file ───
+    current_dir = os.getcwd()
+    if args.input_file:
+        input_file = args.input_file
+    else:
+        candidates = find_command_files(current_dir)
+        if len(candidates) == 1:
+            input_file = candidates[0]
+            print(f"Using command file: {input_file}")
+        elif len(candidates) > 1:
+            print("Multiple command files found:")
+            for i, name in enumerate(candidates, 1):
+                print(f"  {i}. {name}")
+            while True:
+                choice = input(f"Enter menu number (1-{len(candidates)}): ").strip()
+                if choice.isdigit() and 1 <= int(choice) <= len(candidates):
+                    input_file = candidates[int(choice) - 1]
+                    print(f"Using command file: {input_file}")
+                    break
+                print("Invalid input. Please enter a menu number.")
+        else:
+            print(
+                f"\033[91mError:\033[0m No command file found in '{current_dir}'. "
+                "Pass one explicitly: exifnotes-to-exiftool <commands.txt>"
+            )
+            sys.exit(1)
+
     # Read the commands (now cleaned) and extract frame count
-    commands = read_commands(args.input_file)
+    commands = read_commands(input_file)
     frame_count = extract_frame_count(commands[-1])  # Will use the last non-empty line
 
-     # --- Get user input for modifications ---
+    # --- Get user input for modifications ---
     print("\n--- Image File Configuration ---")
 
-    current_dir = os.getcwd()
     image_path = ""  # Initialize image_path
     while True:
         image_path_input = input(
@@ -480,12 +529,12 @@ def main():
         sys.exit(0)
 
     # --- Generate Shell Script ---
-    output_file = f"run_exiftool_{Path(args.input_file).stem}.sh"
+    output_file = f"run_exiftool_{Path(input_file).stem}.sh"
     # Pass necessary info to generate_shell_script and get the full path
     script_path = generate_shell_script(
         final_commands,
         output_path=output_file,
-        input_filename=Path(args.input_file).name,
+        input_filename=Path(input_file).name,
         target_dir=image_path,
     )
 

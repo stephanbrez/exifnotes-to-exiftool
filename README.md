@@ -43,6 +43,10 @@ This script helps photographers who use the [ExifNotes](https://play.google.com/
      ```bash
      python3 <path to file>/exifnotes-to-exiftool Fuji_400H_ExifToolCmds.txt
      ```
+   - The command file argument is optional: if omitted, the tool looks in the
+     current directory for a `.txt` file whose last line matches the ExifNotes
+     command pattern, using it automatically when exactly one is found and
+     prompting when several are found.
 3. Follow the interactive prompts to:
    - Specify the image directory (or use current directory)
    - File extension is detected automatically when the directory contains
