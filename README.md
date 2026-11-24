@@ -11,7 +11,8 @@ This script helps photographers who use the [ExifNotes](https://play.google.com/
 - Reads a text file exported from [ExifNotes](https://play.google.com/store/apps/details?id=com.tommihirvonen.exifnotes&hl=en-US) containing [ExifTool](https://exiftool.org/) commands
 - Interactively allows you to:
   - Specify the directory containing your image files
-  - Choose the file extension to process (if you forgot to set it in the ExifNotes app)
+  - Detect the file extension from the directory contents, prompting only if
+    the directory has no image files or mixed image types (e.g. JPEG + RAW)
   - Enter film stock information (film size and film type)
   - Select start and end image files to define a range (supports reverse walking)
 - Validates the number of available images against the number of commands
@@ -44,7 +45,9 @@ This script helps photographers who use the [ExifNotes](https://play.google.com/
      ```
 3. Follow the interactive prompts to:
    - Specify the image directory (or use current directory)
-   - Enter the file extension (e.g., .jpg, .tif)
+   - File extension is detected automatically when the directory contains
+     exactly one known image type; otherwise you're prompted for it
+     (e.g., .jpg, .tif)
    - Select the film size from a menu (35mm, 120, 4x5, 5x7, 8x10, or custom)
    - Enter the film stock name (e.g., Portra 400, Tri-X 400)
    - Select start and end image files to define a range

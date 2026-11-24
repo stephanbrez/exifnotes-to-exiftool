@@ -10,6 +10,34 @@ from pathlib import Path
 MAX_MENU_OPTIONS = 3
 DEFAULT_FILE_PERMISSIONS = 0o755
 
+# Known image file extensions used for automatic extension detection
+IMAGE_EXTENSIONS = {
+    ".jpg", ".jpeg", ".tif", ".tiff", ".png", ".dng", ".raw",
+    ".cr2", ".cr3", ".nef", ".arw", ".orf", ".rw2", ".raf",
+    ".heic", ".jxl",
+}
+
+
+def detect_extension(image_path: str) -> str | None:
+    """Guess the image file extension from a directory's contents.
+
+    Scans the directory for files with known image extensions (see
+    IMAGE_EXTENSIONS). Sidecar files (e.g. .xmp) and non-image files are
+    ignored.
+
+    Returns the single detected extension (lowercase, with leading dot),
+    or None if the directory contains no image files or more than one
+    distinct image extension.
+    """
+    extensions = {
+        f.suffix.lower()
+        for f in Path(image_path).iterdir()
+        if f.is_file() and not f.name.startswith(".") and f.suffix.lower() in IMAGE_EXTENSIONS
+    }
+    if len(extensions) == 1:
+        return extensions.pop()
+    return None
+
 
 def read_commands(file_path: str) -> list[str]:
     """Read ExifTool commands from a file, stripping whitespace and filtering empty lines."""
@@ -122,7 +150,10 @@ def find_image_files(image_path: str, file_extension: str) -> list[str]:
             )
             sys.exit(1)
 
-        files = [f.name for f in p.glob(f"*{file_extension}") if f.is_file()]
+        files = [
+            f.name for f in p.iterdir()
+            if f.is_file() and f.suffix.lower() == file_extension.lower()
+        ]
 
         sorted_files = sorted(files, key=natural_sort_key)
         return sorted_files
@@ -355,13 +386,18 @@ def main():
                 f"\033[91mError:\033[0m '{image_path}' is not a valid directory. Please try again."
             )
 
-    file_extension = input(
-        "Enter the image file extension (e.g., .jpg, .tif - default: .jpg): "
-    ).strip()
-    if not file_extension:
-        file_extension = ".jpg"
-    elif not file_extension.startswith("."):
-        file_extension = f".{file_extension}"
+    detected = detect_extension(image_path)
+    if detected:
+        file_extension = detected
+        print(f"Using detected file extension: {file_extension}")
+    else:
+        file_extension = input(
+            "Enter the image file extension (e.g., .jpg, .tif - default: .jpg): "
+        ).strip()
+        if not file_extension:
+            file_extension = ".jpg"
+        elif not file_extension.startswith("."):
+            file_extension = f".{file_extension}"
 
     # Get film stock information
     film_info = get_film_info()
