@@ -54,6 +54,8 @@ This script helps photographers who use the [ExifNotes](https://play.google.com/
      (e.g., .jpg, .tif)
    - Select the film size from a menu (35mm, 120, 4x5, 5x7, 8x10, or custom)
    - Enter the film stock name (e.g., Portra 400, Tri-X 400)
+   - Film info from a previous run in the same image directory is offered as
+     the default at both prompts (press Enter to reuse)
    - Select start and end image files to define a range
    - Confirm the selection (script auto-detects reverse if end comes before start)
 4. Review the generated shell script before running it

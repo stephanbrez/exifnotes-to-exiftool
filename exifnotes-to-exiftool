@@ -95,22 +95,62 @@ def extract_frame_count(last_command: str) -> int:
         sys.exit(1)
 
 
-def get_film_info() -> str:
-    """Prompt user for film size and stock, returning hierarchical subject string."""
+def find_previous_film_info(image_path: str) -> str | None:
+    """Return the film info recorded by the most recent generated script.
+
+    Scans 'run_exiftool_*.sh' files in image_path (newest first) for a
+    HierarchicalSubject assignment and returns its value, e.g.
+    'Film|35mm|Portra 400'. Returns None if no script carries one.
+    """
+    scripts = sorted(
+        (f for f in Path(image_path).glob("run_exiftool_*.sh") if f.is_file()),
+        key=lambda f: f.stat().st_mtime,
+        reverse=True,
+    )
+    pattern = re.compile(r'-XMP-lr:HierarchicalSubject\+="([^"]+)"')
+    for script in scripts:
+        try:
+            content = script.read_text()
+        except (OSError, UnicodeDecodeError):
+            continue
+        match = pattern.search(content)
+        if match:
+            return match.group(1)
+    return None
+
+
+def get_film_info(previous: str | None = None) -> str:
+    """Prompt user for film size and stock, returning hierarchical subject string.
+
+    If previous film info is given (from an earlier run in the same
+    directory), pressing Enter at either prompt reuses that value.
+    """
     # Define common film sizes
     film_sizes = ["35mm", "120", "4x5", "5x7", "8x10"]
-    
+
+    prev_size = None
+    prev_stock = None
+    if previous:
+        parts = previous.split("|")
+        if len(parts) == 3 and parts[0] == "Film":
+            prev_size, prev_stock = parts[1], parts[2]
+            print(f"Previous run in this directory: {previous}")
+
     print("\n--- Film Stock Information ---")
-    
+
     # Prompt for film size selection
     print("Select film size:")
     for i, size in enumerate(film_sizes, 1):
         print(f"  {i}. {size}")
     print(f"  {len(film_sizes) + 1}. Enter custom size")
-    
+
     while True:
+        hint = f" - Enter to reuse: {prev_size}" if prev_size else ""
         try:
-            choice_input = input(f"Enter your choice (1-{len(film_sizes) + 1}): ")
+            choice_input = input(f"Enter your choice (1-{len(film_sizes) + 1}){hint}: ")
+            if not choice_input and prev_size:
+                film_size = prev_size
+                break
             if not choice_input:
                 print("Invalid input. Please enter a number.")
                 continue
@@ -133,10 +173,14 @@ def get_film_info() -> str:
                 print(f"Invalid choice. Please enter a number between 1 and {len(film_sizes) + 1}.")
         except ValueError:
             print("Invalid input. Please enter a number.")
-    
+
     # Prompt for film stock
     while True:
-        film_stock_input = input("Enter film stock (e.g., Portra 400, Tri-X 400): ")
+        hint = f" (e.g., Portra 400, Tri-X 400 - Enter to reuse: {prev_stock})" if prev_stock else " (e.g., Portra 400, Tri-X 400)"
+        film_stock_input = input(f"Enter film stock{hint}: ")
+        if not film_stock_input and prev_stock:
+            film_stock = prev_stock
+            break
         if not film_stock_input:
             print("Film stock cannot be empty.")
             continue
@@ -346,7 +390,8 @@ def generate_final_commands(commands: list[str], selected_files: list[str], imag
     for i in range(num_to_process):
         cmd_template = commands[i]
         target_file = selected_files[i]
-        full_target_path = Path(image_path) / target_file
+        # Absolute paths so the generated script runs from any directory
+        full_target_path = Path(os.path.abspath(image_path)) / target_file
 
         quoted_target_path = f'"{str(full_target_path)}"'
 
@@ -484,8 +529,8 @@ def main():
         elif not file_extension.startswith("."):
             file_extension = f".{file_extension}"
 
-    # Get film stock information
-    film_info = get_film_info()
+    # Get film stock information, defaulting to the previous run's values
+    film_info = get_film_info(find_previous_film_info(image_path))
 
     # --- Find and Select Image Files ---
     print(f"\nScanning '{image_path}' for '{file_extension}' files...")
