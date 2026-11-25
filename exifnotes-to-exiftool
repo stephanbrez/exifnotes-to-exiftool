@@ -548,9 +548,11 @@ def main():
         "input_file",
         nargs="?",
         default=None,
-        help="Path to the ExifTool commands file (e.g., Fuji_400H_ExifToolCmds.txt). "
-        "If omitted, the tool looks for a command file in the image directory "
-        "first, then the current directory.",
+        help="Path to the ExifTool commands file (e.g., Fuji_400H_ExifToolCmds.txt), "
+        "or to the image directory (a command file is then auto-discovered inside "
+        "it, falling back to the current directory). If omitted, the tool prompts "
+        "for the image directory and looks for a command file there first, then "
+        "in the current directory.",
     )
     parser.add_argument(
         "--start",
@@ -574,24 +576,33 @@ def main():
     print("\n--- Image File Configuration ---")
 
     current_dir = os.getcwd()
-    image_path = ""  # Initialize image_path
-    while True:
-        image_path_input = input(
-            f"Enter the path to the directory containing image files (press Enter to use current: {current_dir}): "
-        ).strip()
-        # Assign chosen/default path to image_path
-        image_path = image_path_input if image_path_input else current_dir
-        if Path(image_path).is_dir():
-            break
-        else:
-            print(
-                f"\033[91mError:\033[0m '{image_path}' is not a valid directory. Please try again."
-            )
+    # The positional argument may be a commands file OR an image directory
+    dir_prefill = None
+    input_file = args.input_file
+    if args.input_file and Path(args.input_file).is_dir():
+        dir_prefill = args.input_file
+        input_file = None  # discover the command file inside it
+
+    if dir_prefill:
+        image_path = dir_prefill
+        print(f"Using image directory: {image_path}")
+    else:
+        image_path = ""  # Initialize image_path
+        while True:
+            image_path_input = input(
+                f"Enter the path to the directory containing image files (press Enter to use current: {current_dir}): "
+            ).strip()
+            # Assign chosen/default path to image_path
+            image_path = image_path_input if image_path_input else current_dir
+            if Path(image_path).is_dir():
+                break
+            else:
+                print(
+                    f"\033[91mError:\033[0m '{image_path}' is not a valid directory. Please try again."
+                )
 
     # ─── Resolve the command file: image directory first, then cwd ───
-    if args.input_file:
-        input_file = args.input_file
-    else:
+    if not input_file:
         candidates = find_command_files(image_path)
         search_dir = image_path
         if not candidates:

@@ -38,6 +38,8 @@ This script helps photographers who use the [ExifNotes](https://play.google.com/
    - Direct execution (if in your PATH):
      ```bash
      exifnotes-to-exiftool Fuji_400H_ExifToolCmds.txt
+     # or just point it at the image directory:
+     exifnotes-to-exiftool /path/to/roll1
      ```
    - Using Python interpreter:
      ```bash
