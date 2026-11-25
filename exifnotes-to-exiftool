@@ -40,10 +40,11 @@ def detect_extension(image_path: str) -> str | None:
 
 
 def find_command_files(directory: str) -> list[str]:
-    """Return .txt files in directory whose last line matches a command pattern.
+    """Return paths of .txt files in directory matching the command pattern.
 
     A candidate file's last non-empty line must end with the filename
-    pattern '*_NN.ext' used by ExifNotes exports.
+    pattern '*_NN.ext' used by ExifNotes exports. Full paths are returned
+    so candidates open correctly regardless of the current directory.
     """
     pattern = re.compile(r"\*_\d+\.\w+$")
     candidates = []
@@ -55,7 +56,7 @@ def find_command_files(directory: str) -> list[str]:
         except (OSError, UnicodeDecodeError):
             continue
         if lines and pattern.search(lines[-1]):
-            candidates.append(f.name)
+            candidates.append(str(f))
     return candidates
 
 
@@ -601,8 +602,8 @@ def main():
             print(f"Using command file from '{search_dir}': {input_file}")
         elif len(candidates) > 1:
             print(f"Multiple command files found in '{search_dir}':")
-            for i, name in enumerate(candidates, 1):
-                print(f"  {i}. {name}")
+            for i, path in enumerate(candidates, 1):
+                print(f"  {i}. {Path(path).name}")
             while True:
                 choice = input(f"Enter menu number (1-{len(candidates)}): ").strip()
                 if choice.isdigit() and 1 <= int(choice) <= len(candidates):
