@@ -47,9 +47,10 @@ This script helps photographers who use the [ExifNotes](https://play.google.com/
      - `--start 2 --end IMG_0003.jpg` — pre-select the range (1-based list position or filename)
      - `--film "35mm|Portra 400"` — set film info non-interactively
    - The command file argument is optional: if omitted, the tool looks in the
-     current directory for a `.txt` file whose last line matches the ExifNotes
-     command pattern, using it automatically when exactly one is found and
-     prompting when several are found.
+     image directory first, then the current directory, for a `.txt` file
+     whose last line matches the ExifNotes command pattern, using it
+     automatically when exactly one is found and prompting when several
+     are found.
 3. Follow the interactive prompts to:
    - Specify the image directory (or use current directory)
    - File extension is detected automatically when the directory contains
