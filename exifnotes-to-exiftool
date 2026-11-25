@@ -379,14 +379,12 @@ def select_image_files(
         if start_prefill is not None
         else None
     )
+    if start_prefill is not None and start_idx is None:
+        print(
+            f"\033[93mWarning:\033[0m --start '{start_prefill}' matched no file; prompting instead."
+        )
     range_selected = False
-    if start_idx is not None:
-        print(f"Start file (--start): {found_files[start_idx]}")
-    else:
-        if start_prefill is not None:
-            print(
-                f"\033[93mWarning:\033[0m --start '{start_prefill}' matched no file; prompting instead."
-            )
+    if start_idx is None:
         start_result = prompt_filename(
             found_files, "starting", get_menu_options(found_files), file_extension,
             allow_range=True,
@@ -409,13 +407,11 @@ def select_image_files(
             if end_prefill is not None
             else None
         )
-        if end_idx is not None:
-            print(f"End file (--end): {found_files[end_idx]}")
-        else:
-            if end_prefill is not None:
-                print(
-                    f"\033[93mWarning:\033[0m --end '{end_prefill}' matched no file; prompting instead."
-                )
+        if end_prefill is not None and end_idx is None:
+            print(
+                f"\033[93mWarning:\033[0m --end '{end_prefill}' matched no file; prompting instead."
+            )
+        if end_idx is None:
             end_idx = prompt_filename(
                 found_files, "ending", get_menu_options(found_files, start_idx), file_extension
             )
